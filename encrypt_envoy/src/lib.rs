@@ -46,11 +46,11 @@ impl HttpContext for Encrypt {
                     //req.body = req.body.replace("secret", "modified");
 
                     let mut new_body = Vec::new();
-                    let req_body = req.body.as_bytes();
                     let password = b"password";
-                    assert!(req_body.len() <= password.len());
-                    for i in 0..req_body.len() {
-                        new_body.push(req_body[i] ^ password[i]);
+                    let req_body_ref = req.body.as_mut_ptr();
+                    let len = req.body.as_bytes().len();
+                    for i in 0..len {
+                        unsafe { *(req_body_ref.wrapping_add(i)) ^= password[i] };
                     }
                     // Re-encode the modified message
                     req.encode(&mut new_body).expect("Failed to encode");
