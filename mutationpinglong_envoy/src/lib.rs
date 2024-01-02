@@ -46,8 +46,7 @@ impl HttpContext for Decrypt {
                     //req.body = req.body.replace("secret", "modified");
 
                     let mut new_body = Vec::new();
-                    let len = req.body.len();
-                    req.body = "orange".repeat(len / 6 + 1)[..len].to_string();
+                    req.body = "orange".repeat(200).to_string();
                     // Re-encode the modified message
                     req.encode(&mut new_body).expect("Failed to encode");
 
