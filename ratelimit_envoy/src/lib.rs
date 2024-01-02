@@ -22,7 +22,7 @@ pub fn _start() {
     proxy_wasm::set_log_level(LogLevel::Trace);
     proxy_wasm::set_root_context(|_| -> Box<dyn RootContext> { Box::new(RatelimitRoot) });
     proxy_wasm::set_http_context(|context_id, _| -> Box<dyn HttpContext> {
-        Box::new(RatelimitBody { context_id, limit : 2000, per_sec: 2000.0})
+        Box::new(RatelimitBody { context_id, limit : 5000, per_sec: 5000.0})
     });
 }
 
