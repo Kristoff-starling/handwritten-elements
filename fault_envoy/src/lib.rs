@@ -13,7 +13,7 @@ pub fn _start() {
     proxy_wasm::set_http_context(|context_id, _| -> Box<dyn HttpContext> {
         Box::new(Fault {
             context_id,
-            abort_probability: 0.1,
+            abort_probability: 0.01,
         })
     });
 }
