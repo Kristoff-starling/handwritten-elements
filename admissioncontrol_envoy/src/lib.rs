@@ -16,7 +16,7 @@ static SUCCESS_COUNT: AtomicUsize = AtomicUsize::new(0);
 pub fn _start() {
     proxy_wasm::set_log_level(LogLevel::Trace);
     proxy_wasm::set_http_context(|context_id, _| -> Box<dyn HttpContext> {
-        Box::new(Admissioncontrol { context_id, multiplier : 0.5 })
+        Box::new(Admissioncontrol { context_id, multiplier : 0.0 })
     });
 }
 
