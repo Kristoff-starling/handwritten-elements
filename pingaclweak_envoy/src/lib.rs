@@ -1,6 +1,5 @@
-use proxy_wasm::traits::{Context, HttpContext};
+use proxy_wasm::traits::{Context, HttpContext, RootContext};
 use proxy_wasm::types::{Action, LogLevel};
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use prost::Message;
 pub mod ping {
@@ -15,39 +14,40 @@ pub fn _start() {
     });
 }
 
+struct AccessControlRoot;
+
+impl Context for AccessControlRoot {}
+
+impl RootContext for AccessControlRoot {
+    fn on_vm_start(&mut self, _: usize) -> bool {
+        true
+    }
+}
+
 struct AccessControl {
     #[allow(unused)]
     context_id: u32,
 }
 
-impl Context for AccessControl {}
+impl AccessControl {}
+
+impl Context for AccessControl {
+    fn on_http_call_response(&mut self, _: u32, _: usize, _body_size: usize, _: usize) {
+        self.resume_http_request();
+    }
+}
 
 impl HttpContext for AccessControl {
-    fn on_http_request_headers(&mut self, _num_of_headers: usize, end_of_stream: bool) -> Action {
-        if !end_of_stream {
-            return Action::Continue;
-        }
-
-        self.set_http_response_header("content-length", None);
+    fn on_http_request_headers(&mut self, _num_of_headers: usize, _end_of_stream: bool) -> Action {
         Action::Continue
     }
 
-    fn on_http_request_body(&mut self, body_size: usize, end_of_stream: bool) -> Action {
-        if !end_of_stream {
-            return Action::Pause;
-        }
-
+    fn on_http_request_body(&mut self, body_size: usize, _end_of_stream: bool) -> Action {
         if let Some(body) = self.get_http_request_body(0, body_size) {
             match ping::PingEchoRequest::decode(&body[5..]) {
                 Ok(req) => {
                     if req.body == "test" {
-                        self.send_http_response(
-                            403,
-                            vec![
-                                ("grpc-status", "7"),
-                            ],
-                            None,
-                        );
+                        self.send_http_response(403, vec![("grpc-status", "7")], None);
                         return Action::Pause;
                     }
                 }
@@ -58,19 +58,11 @@ impl HttpContext for AccessControl {
         Action::Continue
     }
 
-    fn on_http_response_headers(&mut self, _num_headers: usize, end_of_stream: bool) -> Action {
-        if !end_of_stream {
-            return Action::Continue;
-        }
-
+    fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
         Action::Continue
     }
 
-    fn on_http_response_body(&mut self, _body_size: usize, end_of_stream: bool) -> Action {
-        if !end_of_stream {
-            return Action::Pause;
-        }
-
+    fn on_http_response_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
         Action::Continue
     }
 }
