@@ -1,5 +1,5 @@
 [package]
-name = "loadbalance" # Change the nmae of your wasm filter here
+name = "pinglbstickyweak"
 version = "0.1.0"
 edition = "2021"
 
