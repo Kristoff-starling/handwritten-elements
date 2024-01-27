@@ -1,10 +1,11 @@
 use lazy_static::lazy_static;
 use proxy_wasm::traits::{Context, HttpContext, RootContext};
 use proxy_wasm::types::{Action, LogLevel};
-use serde_json::Value; 
-use std::time::Duration;
+use rand::Rng;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::RwLock;
+use std::time::Duration;
 
 use prost::Message;
 pub mod ping {
@@ -12,7 +13,8 @@ pub mod ping {
 }
 
 lazy_static! {
-    static ref PINGLBSTICKYSTRONG_RPC_MAP: RwLock<HashMap<u32, usize>> = RwLock::new(HashMap::new());
+    static ref PINGLBSTICKYSTRONG_RPC_MAP: RwLock<HashMap<u32, usize>> =
+        RwLock::new(HashMap::new());
 }
 
 struct LoadBalanceRoot;
@@ -32,21 +34,24 @@ struct LoadBalanceBody {
 
 impl Context for LoadBalanceBody {
     fn on_http_call_response(&mut self, _: u32, _: usize, body_size: usize, _: usize) {
+        // log::warn!("[DEBUG] executing on on_http_call_response");
         if let Some(body) = self.get_http_call_response_body(0, body_size) {
             if let Ok(body_str) = std::str::from_utf8(&body) {
                 let rpc_hashmap_inner = PINGLBSTICKYSTRONG_RPC_MAP.read().unwrap();
-                let rpc_body_size: usize = *rpc_hashmap_inner.get(&self.context_id).unwrap();
+                let rpc_body_size = *rpc_hashmap_inner.get(&self.context_id).unwrap();
                 let mut lb_tab_read: Option<String> = None;
                 match serde_json::from_str::<Value>(body_str) {
-                    Ok(json) => {
-                        match json.get("GET") {
-                            Some(get) if !get.is_null() => {
+                    Ok(json) => match json.get("GET") {
+                        Some(get) => {
+                            if !get.is_null() {
                                 lb_tab_read = match get {
                                     serde_json::Value::Null => None,
                                     _ => Some(get.as_str().unwrap().to_string()),
                                 };
-                            },
-                            _ => log::warn!("Cache miss!!!"),
+                            }
+                        }
+                        _ => {
+                            return;
                         }
                     },
                     Err(_) => log::warn!("Response body: [Invalid JSON data]"),
@@ -57,6 +62,7 @@ impl Context for LoadBalanceBody {
                             match lb_tab_read {
                                 Some(_dst) => {}
                                 None => {
+                                    let lb_value = rand::thread_rng().gen_range(0.0, 1.0);
                                     self.dispatch_http_call(
                                         "webdis-service-pinglbstickystrong", // or your service name
                                         vec![
@@ -65,7 +71,9 @@ impl Context for LoadBalanceBody {
                                                 ":path",
                                                 &format!(
                                                     "/SET/{}/{}",
-                                                    rpc_request.body.clone().to_string() + "_lb_tab", "1".to_string()
+                                                    rpc_request.body.clone().to_string()
+                                                        + "_lb_tab",
+                                                    lb_value.to_string()
                                                 ),
                                             ),
                                             (":authority", "webdis-service-pinglbstickystrong"), // Replace with the appropriate authority if needed
@@ -73,7 +81,8 @@ impl Context for LoadBalanceBody {
                                         None,
                                         vec![],
                                         Duration::from_secs(5),
-                                    ).unwrap();
+                                    )
+                                    .unwrap();
                                 }
                             };
                         }
@@ -99,21 +108,26 @@ pub fn _start() {
 
 impl HttpContext for LoadBalanceBody {
     fn on_http_request_headers(&mut self, _num_of_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request headers");
         Action::Continue
     }
 
     fn on_http_request_body(&mut self, body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request body");
         if let Some(body) = self.get_http_request_body(0, body_size) {
             let mut rpc_hashmap_inner = PINGLBSTICKYSTRONG_RPC_MAP.write().unwrap();
             match ping::PingEchoRequest::decode(&body[5..]) {
                 Ok(req) => {
                     rpc_hashmap_inner.insert(self.context_id, body_size);
                     self.dispatch_http_call(
-                        "webdis-service-pinglbstickystrong", 
+                        "webdis-service-pinglbstickystrong",
                         vec![
                             (":method", "GET"),
-                            (":path", &format!("/GET/{}", req.body.clone().to_string() + "_lb_tab")),
-                            (":authority", "webdis-service-pinglbstickystrong"), 
+                            (
+                                ":path",
+                                &format!("/GET/{}", req.body.clone().to_string() + "_lb_tab"),
+                            ),
+                            (":authority", "webdis-service-pinglbstickystrong"),
                         ],
                         None,
                         vec![],
@@ -124,16 +138,18 @@ impl HttpContext for LoadBalanceBody {
                 }
                 Err(e) => log::warn!("decode error: {}", e),
             }
-        }   
+        }
 
         Action::Continue
     }
 
     fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response headers");
         Action::Continue
     }
 
     fn on_http_response_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response body");
         Action::Continue
     }
 }

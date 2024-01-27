@@ -47,10 +47,12 @@ impl Context for Metrics {
 
 impl HttpContext for Metrics {
     fn on_http_request_headers(&mut self, _num_of_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request headers");
         Action::Continue
     }
 
     fn on_http_request_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request body");
         let mut timestamp_inner = TIMESTAMP.write().unwrap();
         let now: DateTime<Utc> = self.get_current_time().into();
         timestamp_inner.insert(self.context_id, now.timestamp() as f64);
@@ -59,10 +61,12 @@ impl HttpContext for Metrics {
     }
 
     fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response headers");
         Action::Continue
     }
 
     fn on_http_response_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response body");
         let mut timestamp_inner = TIMESTAMP.write().unwrap();
         let mut latency_inner = LATENCY.write().unwrap();
         match timestamp_inner.get(&self.context_id) {

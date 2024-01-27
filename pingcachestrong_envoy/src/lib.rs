@@ -25,6 +25,7 @@ struct CacheBody {
 
 impl Context for CacheBody {
     fn on_http_call_response(&mut self, _: u32, _: usize, body_size: usize, _: usize) {
+        // log::warn!("[DEBUG] executing on on_http_call_response");
         if let Some(body) = self.get_http_call_response_body(0, body_size) {
             if let Ok(body_str) = std::str::from_utf8(&body) {
                 match serde_json::from_str::<Value>(body_str) {
@@ -44,10 +45,8 @@ impl Context for CacheBody {
                                     Some(_) => log::warn!("The request is not cached."),
                                     None => log::warn!("Cache hit but GET value is not a string"),
                                 }
-                                
-
                             },
-                            _ => log::warn!("Cache miss!!!"),
+                            _ => {},
                         }
                     },
                     Err(_) => log::warn!("Response body: [Invalid JSON data]"),
@@ -72,10 +71,12 @@ pub fn _start() {
 
 impl HttpContext for CacheBody {
     fn on_http_request_headers(&mut self, _num_of_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request headers");
         Action::Continue
     }
 
     fn on_http_request_body(&mut self, body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request body");
         if let Some(body) = self.get_http_request_body(0, body_size) {
             match ping::PingEchoRequest::decode(&body[5..]) {
                 Ok(req) => {
@@ -84,7 +85,7 @@ impl HttpContext for CacheBody {
                         vec![
                             (":method", "GET"),
                             (":path", &format!("/GET/{}", req.body.clone().to_string() + "_cache",)),
-                            (":authority", "webdis-servic-pingcachestronge"), 
+                            (":authority", "webdis-servic-pingcachestrong"), 
                         ],
                         None,
                         vec![],
@@ -101,19 +102,21 @@ impl HttpContext for CacheBody {
     }
 
     fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response headers");
         Action::Continue
     }
 
     fn on_http_response_body(&mut self, body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response body");
         if let Some(body) = self.get_http_response_body(0, body_size) {
             match ping::PingEchoResponse::decode(&body[5..]) {
                 Ok(req) => {
                     self.dispatch_http_call(
-                        "webdis-service-pingcachestronge", 
+                        "webdis-service-pingcachestrong", 
                         vec![
                             (":method", "GET"),
                             (":path", &format!("/SET/{}/cached", req.body + "_cache")),
-                            (":authority", "webdis-service-pingcachestronge"), 
+                            (":authority", "webdis-service-pingcachestrong"), 
                         ],
                         None,
                         vec![],

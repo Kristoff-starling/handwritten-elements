@@ -48,10 +48,12 @@ impl Context for Admissioncontrol {
 
 impl HttpContext for Admissioncontrol {
     fn on_http_request_headers(&mut self, _num_of_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request headers, {}", self.context_id);
         Action::Continue
     }
 
     fn on_http_request_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request body, {}", self.context_id);
         let mut requests = REQUESTS.write().unwrap();
         let accepts = ACCEPTS.read().unwrap();
 
@@ -63,6 +65,7 @@ impl HttpContext for Admissioncontrol {
 
         let rand_value = rand::thread_rng().gen_range(0.0, 1.0);
         if rand_value < rej_prob {
+            log::warn!("rejected: {}", self.context_id);
             self.send_http_response(403, vec![("grpc-status", "1")], None);
         }
 
@@ -70,6 +73,7 @@ impl HttpContext for Admissioncontrol {
     }
 
     fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response headers, {}", self.context_id);
         if let Some(status_code) = self.get_http_response_header(":status") {
             if status_code == "200" {
                 let mut accepts = ACCEPTS.write().unwrap();
@@ -81,6 +85,7 @@ impl HttpContext for Admissioncontrol {
     }
 
     fn on_http_response_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response body, {}", self.context_id);
         Action::Continue
     }
 }

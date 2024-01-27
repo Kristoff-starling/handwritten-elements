@@ -46,10 +46,12 @@ pub fn _start() {
 
 impl HttpContext for LoadBalanceBody {
     fn on_http_request_headers(&mut self, _num_of_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request headers");
         Action::Continue
     }
 
     fn on_http_request_body(&mut self, body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request body");
         if let Some(body) = self.get_http_request_body(0, body_size) {
             match ping::PingEchoRequest::decode(&body[5..]) {
                 Ok(req) => {
@@ -68,10 +70,12 @@ impl HttpContext for LoadBalanceBody {
     }
 
     fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response headers");
         Action::Continue
     }
 
     fn on_http_response_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response body");
         Action::Continue
     }
 }

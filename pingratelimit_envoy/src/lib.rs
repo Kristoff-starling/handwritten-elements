@@ -56,10 +56,12 @@ impl Context for RatelimitBody {
 
 impl HttpContext for RatelimitBody {
     fn on_http_request_headers(&mut self, _num_of_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request headers");
         Action::Continue
     }
 
     fn on_http_request_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request body");
         let now: DateTime<Utc> = self.get_current_time().into();
         let mut last_ts_inner = LAST_TS.write().unwrap();
         let mut token_inner = TOKEN.write().unwrap();
@@ -82,10 +84,12 @@ impl HttpContext for RatelimitBody {
     }
 
     fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response headers");
         Action::Continue
     }
 
     fn on_http_response_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response body");
         Action::Continue
     }
 }

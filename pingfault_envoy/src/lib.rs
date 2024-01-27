@@ -43,10 +43,12 @@ impl Context for Fault {
 
 impl HttpContext for Fault {
     fn on_http_request_headers(&mut self, _num_of_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request headers");
         Action::Continue
     }
 
     fn on_http_request_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on request body");
         let mut rng = rand::thread_rng();
         let rand_num = rng.gen_range(0.0, 1.0);
         if rand_num < self.abort_probability {
@@ -58,10 +60,12 @@ impl HttpContext for Fault {
     }
 
     fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response headers");
         Action::Continue
     }
 
     fn on_http_response_body(&mut self, _body_size: usize, _end_of_stream: bool) -> Action {
+        // log::warn!("[DEBUG] executing on response body");
         Action::Continue
     }
 }
