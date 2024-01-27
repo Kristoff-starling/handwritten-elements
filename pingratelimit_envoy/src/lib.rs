@@ -21,7 +21,7 @@ impl RootContext for RatelimitRoot {
     fn on_vm_start(&mut self, _: usize) -> bool {
         let mut last_ts_inner = LAST_TS.write().unwrap();
         let now: DateTime<Utc> = self.get_current_time().into();
-        *last_ts_inner = now.timestamp() as f64;
+        *last_ts_inner = now.timestamp_micros() as f64;
         true
     }
 }
@@ -64,11 +64,12 @@ impl HttpContext for RatelimitBody {
         let mut last_ts_inner = LAST_TS.write().unwrap();
         let mut token_inner = TOKEN.write().unwrap();
         let token_to_store = f64::min(
-            *token_inner + (now.timestamp() as f64 - *last_ts_inner) * self.per_sec,
+            *token_inner
+                + (now.timestamp_micros() as f64 - *last_ts_inner) / 1000000.0 * self.per_sec,
             self.limit,
         );
         *token_inner = token_to_store;
-        *last_ts_inner = now.timestamp() as f64;
+        *last_ts_inner = now.timestamp_micros() as f64;
 
         if token_to_store < 1.0 {
             self.send_http_response(403, vec![("grpc-status", "1")], None);
