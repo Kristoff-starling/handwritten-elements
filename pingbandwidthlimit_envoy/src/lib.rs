@@ -4,6 +4,7 @@ use proxy_wasm::traits::{Context, HttpContext, RootContext};
 use proxy_wasm::types::{Action, LogLevel};
 use std::sync::RwLock;
 
+use prost::Message;
 pub mod ping {
     include!(concat!(env!("OUT_DIR"), "/ping.rs"));
 }
@@ -60,21 +61,30 @@ impl HttpContext for BandwidthLimitBody {
     }
 
     fn on_http_request_body(&mut self, body_size: usize, _end_of_stream: bool) -> Action {
-        let now: DateTime<Utc> = self.get_current_time().into();
-        let mut last_ts = LAST_TS.write().unwrap();
-        let mut bytes = BYTES.write().unwrap();
-        let bytes_to_store = f64::min(
-            *bytes + (now.timestamp_micros() as f64 - *last_ts) / 1000000.0 * self.per_sec,
-            self.limit,
-        );
-        *bytes = bytes_to_store;
-        *last_ts = now.timestamp_micros() as f64;
+        if let Some(body) = self.get_http_request_body(0, body_size) {
+            match ping::PingEchoRequest::decode(&body[5..]) {
+                Ok(req) => {
+                    let now: DateTime<Utc> = self.get_current_time().into();
+                    let mut last_ts = LAST_TS.write().unwrap();
+                    let mut bytes = BYTES.write().unwrap();
+                    let bytes_to_store = f64::min(
+                        *bytes
+                            + (now.timestamp_micros() as f64 - *last_ts) / 1000000.0 * self.per_sec,
+                        self.limit,
+                    );
+                    *bytes = bytes_to_store;
+                    *last_ts = now.timestamp_micros() as f64;
 
-        if *bytes < body_size as f64 {
-            self.send_http_response(403, vec![("grpc-status", "1")], None);
-            return Action::Pause;
-        } else {
-            *bytes -= body_size as f64;
+                    let size_bw = req.body.bytes().len() as f64;
+                    if *bytes < size_bw {
+                        self.send_http_response(403, vec![("grpc-status", "1")], None);
+                        return Action::Pause;
+                    } else {
+                        *bytes -= size_bw;
+                    }
+                }
+                Err(e) => log::warn!("decode error: {}", e),
+            }
         }
 
         Action::Continue
